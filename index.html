@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Growtopia Farming Tracker</title>
+    <title>Tracker by 72GooseCode</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -20,6 +20,10 @@
             flex: 1; padding: 8px; background: #222; color: #fff;
             border: 1px solid #444; cursor: pointer; font-weight: bold; font-family: inherit;
             font-size: clamp(11px, 2.8vw, 14px);
+            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
         .tab-btn.active, .view-btn.active { background: #00ff66; color: #000; }
         
@@ -64,6 +68,10 @@
             background: #00ff66; color: #000; border: none; padding: 6px 8px;
             cursor: pointer; font-weight: bold; font-family: inherit; border-radius: 2px;
             font-size: clamp(10px, 2.5vw, 12px);
+            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
         .action-btn.edit { background: #ffcc00; color: #000; }
         .action-btn.del { background: #ff3333; color: #fff; }
@@ -72,13 +80,15 @@
 </head>
 <body>
 
-    <h2>GROWTOPIA FARMING TRACKER</h2>
+    <h2>Tracker by 72GooseCode</h2>
 
     <!-- Form Pengaturan Google Script URL -->
     <div class="config-form">
         <strong style="color:#fff;">⚙️ KONEKSI GOOGLE DRIVE (SHEETS)</strong><br>
         <input type="text" id="scriptUrlInput" placeholder="Masukkan URL Google Apps Script kamu di sini">
-        <button onclick="saveScriptUrl()">Simpan URL Script</button>
+        <div style="display: flex; justify-content: center;">
+            <button onclick="saveScriptUrl()">Simpan URL Script</button>
+        </div>
         <div id="syncStatus" class="sync-status">Status: Belum Terhubung</div>
     </div>
 
@@ -91,7 +101,9 @@
             <input type="number" id="hours" placeholder="Jam" min="0" max="23">
             <input type="number" id="minutes" placeholder="Menit" min="0" max="59">
         </div>
-        <button onclick="addTimer()">Mulai Timer</button>
+        <div style="display: flex; justify-content: center;">
+            <button onclick="addTimer()">Mulai Timer</button>
+        </div>
     </div>
 
     <!-- Tombol Mode Tampilan -->
@@ -121,7 +133,7 @@
 
         function triggerBrowserNotification(worldName) {
             if ("Notification" in window && Notification.permission === "granted") {
-                new Notification("GROWTOPIA FARMING TRACKER", {
+                new Notification("Tracker by 72GooseCode", {
                     body: `World ${worldName} sudah READY untuk di-farm!`,
                 });
             }
@@ -141,7 +153,7 @@
         async function loadFromCloud() {
             const scriptUrl = getScriptUrl();
             if (!scriptUrl) {
-                document.getElementById('syncStatus').innerText = "⚠️ Masukkan URL Apps Script untuk sinkronisasi cloud!";
+                document.getElementById('syncStatus').innerText = "⚠️️ Masukkan URL Apps Script untuk sinkronisasi cloud!";
                 localTimers = JSON.parse(localStorage.getItem('gt_local_fallback')) || [];
                 render();
                 return;
@@ -334,6 +346,7 @@ Nama World : ${item.name}
 Timer      : ${isReady ? 'Selesai!' : timerStr}
 Estimasi   : ${formatDate(item.targetTime)}
 Status     : <span class="${isReady ? 'status-ready' : 'status-not-ready'}">${isReady ? 'Ready' : 'Not Ready'}</span>
+
 <span class="card-divider">==================================</span>
 <div class="card-actions">
     <button class="action-btn" onclick="moveTab(${item.id}, '${currentTab === 'ongoing' ? 'complete' : 'ongoing'}')">
