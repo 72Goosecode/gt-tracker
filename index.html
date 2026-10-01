@@ -15,18 +15,18 @@
             background-color: #121212;
             color: #00ff66;
             padding: 15px;
-            max-width: 600px;
+            max-width: 900px;
             margin: auto;
         }
         h2 { text-align: center; color: #fff; margin-bottom: 15px; }
         
         /* Tab Navigation */
-        .tab-buttons {
+        .tab-buttons, .view-buttons {
             display: flex;
             gap: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
-        .tab-btn {
+        .tab-btn, .view-btn {
             flex: 1;
             padding: 10px;
             background: #222;
@@ -36,17 +36,36 @@
             font-weight: bold;
             font-family: inherit;
         }
-        .tab-btn.active {
+        .tab-btn.active, .view-btn.active {
             background: #00ff66;
             color: #000;
         }
 
-        /* Card Text Style */
+        /* Container Tampilan Grid (Paint Layout) */
+        .container-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* 2 Kolom: 1 2, 3 4 */
+            gap: 15px;
+        }
+
+        @media (max-width: 600px) {
+            .container-grid {
+                grid-template-columns: 1fr; /* 1 kolom jika di layar HP kecil */
+            }
+        }
+
+        /* Container Tampilan List Text */
+        .container-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* Card Style */
         .card {
             background: #1a1a1a;
             border: 1px solid #333;
             padding: 12px;
-            margin-bottom: 15px;
             white-space: pre-wrap;
             line-height: 1.4;
             border-radius: 4px;
@@ -102,17 +121,24 @@
         <button onclick="addTimer()">Mulai Timer</button>
     </div>
 
+    <!-- Tombol Pilihan Mode Tampilan -->
+    <div class="view-buttons">
+        <button class="view-btn active" id="btnViewList" onclick="switchView('list')">Tampilan List</button>
+        <button class="view-btn" id="btnViewGrid" onclick="switchView('grid')">Tampilan Grid (Paint)</button>
+    </div>
+
     <!-- Tombol Navigasi Tab -->
     <div class="tab-buttons">
         <button class="tab-btn active" id="btnOngoing" onclick="switchTab('ongoing')">ONGOING (<span id="countOngoing">0</span>)</button>
         <button class="tab-btn" id="btnComplete" onclick="switchTab('complete')">COMPLETE (<span id="countComplete">0</span>)</button>
     </div>
 
-    <!-- List Timer -->
-    <div id="timerContainer"></div>
+    <!-- List Container -->
+    <div id="timerContainer" class="container-list"></div>
 
     <script>
         let currentTab = 'ongoing';
+        let currentView = 'list';
 
         function getData() {
             return JSON.parse(localStorage.getItem('gt_simple_timers')) || [];
@@ -181,6 +207,16 @@
             render();
         }
 
+        function switchView(view) {
+            currentView = view;
+            document.getElementById('btnViewList').classList.toggle('active', view === 'list');
+            document.getElementById('btnViewGrid').classList.toggle('active', view === 'grid');
+            
+            const container = document.getElementById('timerContainer');
+            container.className = view === 'grid' ? 'container-grid' : 'container-list';
+            render();
+        }
+
         function formatDate(timestamp) {
             const d = new Date(timestamp);
             const daysArr = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -201,10 +237,13 @@
             document.getElementById('countOngoing').innerText = ongoingList.length;
             document.getElementById('countComplete').innerText = completeList.length;
 
-            const targetList = currentTab === 'ongoing' ? ongoingList : completeList;
+            let targetList = currentTab === 'ongoing' ? ongoingList : completeList;
+
+            // UUTKAN TIMER: Yang selesai tercepat (atau sudah Ready) di posisi paling atas
+            targetList.sort((a, b) => a.targetTime - b.targetTime);
 
             if (targetList.length === 0) {
-                container.innerHTML = '<p style="color:#888; text-align:center;">Tidak ada timer di tab ini.</p>';
+                container.innerHTML = '<p style="color:#888; text-align:center; grid-column: 1/-1;">Tidak ada timer di tab ini.</p>';
                 return;
             }
 
@@ -214,7 +253,7 @@
                 const diff = item.targetTime - now;
                 const isReady = diff <= 0;
 
-                let timerStr = "0d 0h 0m 0s";
+                let timerStr = "0d, 0h, 0m, 0s";
                 if (!isReady) {
                     const d = Math.floor(diff / 86400000);
                     const h = Math.floor((diff % 86400000) / 3600000);
