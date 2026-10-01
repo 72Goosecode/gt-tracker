@@ -89,6 +89,22 @@
         let currentView = 'list';
         let localTimers = [];
 
+        // Minta Izin Notifikasi Browser
+        if ("Notification" in window) {
+            if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+                Notification.requestPermission();
+            }
+        }
+
+        function triggerBrowserNotification(worldName) {
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification("GROWTOPIA FARMING TRACKER", {
+                    body: `World ${worldName} sudah READY untuk di-farm!`,
+                    icon: "https://file.gt.world/logo.png" // ikon opsional
+                });
+            }
+        }
+
         function getScriptUrl() {
             return localStorage.getItem('gt_script_url') || '';
         }
@@ -145,6 +161,10 @@
         }
 
         function addTimer() {
+            if ("Notification" in window && Notification.permission !== "granted") {
+                Notification.requestPermission();
+            }
+
             const name = document.getElementById('worldName').value.trim();
             const days = parseInt(document.getElementById('days').value) || 0;
             const hours = parseInt(document.getElementById('hours').value) || 0;
@@ -160,7 +180,8 @@
                 id: Date.now(),
                 name: name,
                 targetTime: target.getTime(),
-                statusTab: 'ongoing'
+                statusTab: 'ongoing',
+                notified: false
             });
 
             document.getElementById('worldName').value = '';
@@ -237,6 +258,13 @@
                 const diff = item.targetTime - now;
                 const isReady = diff <= 0;
 
+                // Kirim notifikasi jika timer selesai dan belum pernah diberitahukan
+                if (isReady && !item.notified) {
+                    item.notified = true;
+                    triggerBrowserNotification(item.name);
+                    syncToCloud();
+                }
+
                 let timerStr = "0d, 0h, 0m, 0s";
                 if (!isReady) {
                     const d = Math.floor(diff / 86400000);
@@ -263,7 +291,6 @@ Status          : <span class="${isReady ? 'status-ready' : 'status-not-ready'}"
             });
         }
 
-        // Tampilkan URL tersimpan jika ada saat halaman dibuka
         const savedUrl = getScriptUrl();
         if (savedUrl) {
             document.getElementById('scriptUrlInput').value = savedUrl;
