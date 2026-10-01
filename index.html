@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Growtopia Farming Tracker</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #121212;
+            color: #00ff66;
+            padding: 15px;
+            max-width: 600px;
+            margin: auto;
+        }
+        h2 { text-align: center; color: #fff; margin-bottom: 15px; }
+        
+        /* Tab Navigation */
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            background: #222;
+            color: #fff;
+            border: 1px solid #444;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: inherit;
+        }
+        .tab-btn.active {
+            background: #00ff66;
+            color: #000;
+        }
+
+        /* Card Text Style */
+        .card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            padding: 12px;
+            margin-bottom: 15px;
+            white-space: pre-wrap;
+            line-height: 1.4;
+            border-radius: 4px;
+        }
+
+        .status-ready { color: #00ff66; font-weight: bold; }
+        .status-not-ready { color: #ff3333; font-weight: bold; }
+
+        /* Form Input */
+        .add-form {
+            background: #222;
+            padding: 15px;
+            border: 1px solid #444;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .add-form input {
+            background: #111;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 8px;
+            margin: 4px 0;
+            width: 100%;
+            font-family: inherit;
+        }
+        .add-form button, .action-btn {
+            background: #00ff66;
+            color: #000;
+            border: none;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: inherit;
+            margin-top: 8px;
+            border-radius: 2px;
+        }
+        .action-btn.del { background: #ff3333; color: #fff; margin-left: 5px; }
+    </style>
+</head>
+<body>
+
+    <h2>GROWTOPIA FARMING TRACKER</h2>
+
+    <!-- Form Tambah Timer -->
+    <div class="add-form">
+        <strong style="color:#fff;">+ TAMBAH WORLD BARU</strong><br>
+        <input type="text" id="worldName" placeholder="Nama World (misal: FISH TANK)">
+        <div style="display: flex; gap: 5px;">
+            <input type="number" id="days" placeholder="Hari" min="0">
+            <input type="number" id="hours" placeholder="Jam" min="0" max="23">
+            <input type="number" id="minutes" placeholder="Menit" min="0" max="59">
+        </div>
+        <button onclick="addTimer()">Mulai Timer</button>
+    </div>
+
+    <!-- Tombol Navigasi Tab -->
+    <div class="tab-buttons">
+        <button class="tab-btn active" id="btnOngoing" onclick="switchTab('ongoing')">ONGOING (<span id="countOngoing">0</span>)</button>
+        <button class="tab-btn" id="btnComplete" onclick="switchTab('complete')">COMPLETE (<span id="countComplete">0</span>)</button>
+    </div>
+
+    <!-- List Timer -->
+    <div id="timerContainer"></div>
+
+    <script>
+        let currentTab = 'ongoing';
+
+        function getData() {
+            return JSON.parse(localStorage.getItem('gt_simple_timers')) || [];
+        }
+
+        function saveData(data) {
+            localStorage.setItem('gt_simple_timers', JSON.stringify(data));
+        }
+
+        function addTimer() {
+            const name = document.getElementById('worldName').value.trim();
+            const days = parseInt(document.getElementById('days').value) || 0;
+            const hours = parseInt(document.getElementById('hours').value) || 0;
+            const mins = parseInt(document.getElementById('minutes').value) || 0;
+
+            if (!name) {
+                alert("Isi nama world dulu!");
+                return;
+            }
+
+            if (days === 0 && hours === 0 && mins === 0) {
+                alert("Masukkan durasi waktu!");
+                return;
+            }
+
+            const now = new Date();
+            const target = new Date(now.getTime() + (days * 86400000) + (hours * 3600000) + (mins * 60000));
+
+            const list = getData();
+            list.push({
+                id: Date.now(),
+                name: name,
+                targetTime: target.getTime(),
+                statusTab: 'ongoing'
+            });
+
+            saveData(list);
+            document.getElementById('worldName').value = '';
+            document.getElementById('days').value = '';
+            document.getElementById('hours').value = '';
+            document.getElementById('minutes').value = '';
+            render();
+        }
+
+        function moveTab(id, newTab) {
+            const list = getData();
+            const item = list.find(t => t.id === id);
+            if (item) {
+                item.statusTab = newTab;
+                saveData(list);
+                render();
+            }
+        }
+
+        function deleteTimer(id) {
+            let list = getData();
+            list = list.filter(t => t.id !== id);
+            saveData(list);
+            render();
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.getElementById('btnOngoing').classList.toggle('active', tab === 'ongoing');
+            document.getElementById('btnComplete').classList.toggle('active', tab === 'complete');
+            render();
+        }
+
+        function formatDate(timestamp) {
+            const d = new Date(timestamp);
+            const daysArr = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const dayName = daysArr[d.getDay()];
+            const dateStr = d.toLocaleDateString('id-ID');
+            const timeStr = d.toTimeString().split(' ')[0];
+            return `Hari ${dayName}, Tanggal ${dateStr}, Pukul ${timeStr}`;
+        }
+
+        function render() {
+            const list = getData();
+            const container = document.getElementById('timerContainer');
+            container.innerHTML = '';
+
+            const ongoingList = list.filter(t => t.statusTab === 'ongoing');
+            const completeList = list.filter(t => t.statusTab === 'complete');
+
+            document.getElementById('countOngoing').innerText = ongoingList.length;
+            document.getElementById('countComplete').innerText = completeList.length;
+
+            const targetList = currentTab === 'ongoing' ? ongoingList : completeList;
+
+            if (targetList.length === 0) {
+                container.innerHTML = '<p style="color:#888; text-align:center;">Tidak ada timer di tab ini.</p>';
+                return;
+            }
+
+            const now = new Date().getTime();
+
+            targetList.forEach(item => {
+                const diff = item.targetTime - now;
+                const isReady = diff <= 0;
+
+                let timerStr = "0d 0h 0m 0s";
+                if (!isReady) {
+                    const d = Math.floor(diff / 86400000);
+                    const h = Math.floor((diff % 86400000) / 3600000);
+                    const m = Math.floor((diff % 3600000) / 60000);
+                    const s = Math.floor((diff % 60000) / 1000);
+                    timerStr = `${d}d, ${h}h, ${m}m, ${s}s`;
+                }
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `==============================
+Nama World      : ${item.name}
+Timer           : ${isReady ? 'Selesai!' : timerStr}
+Estimasi selesai: ${formatDate(item.targetTime)}
+Status          : <span class="${isReady ? 'status-ready' : 'status-not-ready'}">${isReady ? 'Ready' : 'Not Ready'}</span>
+==============================
+<button class="action-btn" onclick="moveTab(${item.id}, '${currentTab === 'ongoing' ? 'complete' : 'ongoing'}')">
+    ${currentTab === 'ongoing' ? 'Pindahkan ke Complete' : 'Kembalikan ke Ongoing'}
+</button>
+<button class="action-btn del" onclick="deleteTimer(${item.id})">Hapus</button>`;
+
+                container.appendChild(card);
+            });
+        }
+
+        setInterval(render, 1000);
+        render();
+    </script>
+</body>
+</html>
