@@ -10,40 +10,64 @@
             font-family: 'Courier New', Courier, monospace;
             background-color: #121212;
             color: #00ff66;
-            padding: 15px;
+            padding: 10px;
             max-width: 900px;
             margin: auto;
         }
-        h2 { text-align: center; color: #fff; margin-bottom: 15px; }
-        .tab-buttons, .view-buttons { display: flex; gap: 10px; margin-bottom: 15px; }
+        h2 { text-align: center; color: #fff; margin-bottom: 15px; font-size: clamp(16px, 4vw, 24px); }
+        .tab-buttons, .view-buttons { display: flex; gap: 8px; margin-bottom: 12px; }
         .tab-btn, .view-btn {
-            flex: 1; padding: 10px; background: #222; color: #fff;
+            flex: 1; padding: 8px; background: #222; color: #fff;
             border: 1px solid #444; cursor: pointer; font-weight: bold; font-family: inherit;
+            font-size: clamp(11px, 2.8vw, 14px);
         }
         .tab-btn.active, .view-btn.active { background: #00ff66; color: #000; }
-        .container-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
-        @media (max-width: 600px) { .container-grid { grid-template-columns: 1fr; } }
-        .container-list { display: flex; flex-direction: column; gap: 15px; }
+        
+        /* Layout Grid & List */
+        .container-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+        .container-list { display: flex; flex-direction: column; gap: 12px; }
+        
         .card {
-            background: #1a1a1a; border: 1px solid #333; padding: 12px;
-            white-space: pre-wrap; line-height: 1.4; border-radius: 4px;
+            background: #1a1a1a; border: 1px solid #333; padding: 10px;
+            white-space: pre-wrap; line-height: 1.35; border-radius: 4px;
+            font-size: clamp(10px, 2.5vw, 13px);
+            word-break: break-all;
+            overflow-wrap: anywhere;
+            overflow: hidden;
+        }
+        .card-divider {
+            color: #00ff66;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: clip;
+            display: block;
         }
         .status-ready { color: #00ff66; font-weight: bold; }
         .status-not-ready { color: #ff3333; font-weight: bold; }
+        
         .add-form, .config-form {
-            background: #222; padding: 15px; border: 1px solid #444;
-            margin-bottom: 20px; border-radius: 4px;
+            background: #222; padding: 12px; border: 1px solid #444;
+            margin-bottom: 15px; border-radius: 4px; font-size: clamp(11px, 3vw, 14px);
         }
         .add-form input, .config-form input {
             background: #111; border: 1px solid #555; color: #fff;
             padding: 8px; margin: 4px 0; width: 100%; font-family: inherit;
+            font-size: clamp(11px, 3vw, 14px);
+        }
+        .card-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 8px;
         }
         .add-form button, .action-btn, .config-form button {
-            background: #00ff66; color: #000; border: none; padding: 8px 12px;
-            cursor: pointer; font-weight: bold; font-family: inherit; margin-top: 8px; border-radius: 2px;
+            background: #00ff66; color: #000; border: none; padding: 6px 8px;
+            cursor: pointer; font-weight: bold; font-family: inherit; border-radius: 2px;
+            font-size: clamp(10px, 2.5vw, 12px);
         }
-        .action-btn.del { background: #ff3333; color: #fff; margin-left: 5px; }
-        .sync-status { text-align: center; font-size: 12px; color: #aaa; margin-bottom: 10px; }
+        .action-btn.edit { background: #ffcc00; color: #000; }
+        .action-btn.del { background: #ff3333; color: #fff; }
+        .sync-status { text-align: center; font-size: 11px; color: #aaa; margin-top: 6px; }
     </style>
 </head>
 <body>
@@ -55,14 +79,14 @@
         <strong style="color:#fff;">⚙️ KONEKSI GOOGLE DRIVE (SHEETS)</strong><br>
         <input type="text" id="scriptUrlInput" placeholder="Masukkan URL Google Apps Script kamu di sini">
         <button onclick="saveScriptUrl()">Simpan URL Script</button>
-        <div id="syncStatus" class="sync-status" style="margin-top: 8px;">Status: Belum Terhubung</div>
+        <div id="syncStatus" class="sync-status">Status: Belum Terhubung</div>
     </div>
 
     <!-- Form Tambah Timer -->
     <div class="add-form">
         <strong style="color:#fff;">+ TAMBAH WORLD BARU</strong><br>
         <input type="text" id="worldName" placeholder="Nama World (misal: FISH TANK)">
-        <div style="display: flex; gap: 5px;">
+        <div style="display: flex; gap: 4px;">
             <input type="number" id="days" placeholder="Hari" min="0">
             <input type="number" id="hours" placeholder="Jam" min="0" max="23">
             <input type="number" id="minutes" placeholder="Menit" min="0" max="59">
@@ -89,7 +113,6 @@
         let currentView = 'list';
         let localTimers = [];
 
-        // Minta Izin Notifikasi Browser
         if ("Notification" in window) {
             if (Notification.permission !== "granted" && Notification.permission !== "denied") {
                 Notification.requestPermission();
@@ -100,7 +123,6 @@
             if ("Notification" in window && Notification.permission === "granted") {
                 new Notification("GROWTOPIA FARMING TRACKER", {
                     body: `World ${worldName} sudah READY untuk di-farm!`,
-                    icon: "https://file.gt.world/logo.png" // ikon opsional
                 });
             }
         }
@@ -193,6 +215,36 @@
             syncToCloud();
         }
 
+        function editTimer(id) {
+            const item = localTimers.find(t => t.id === id);
+            if (!item) return;
+
+            const newName = prompt("Ubah Nama World:", item.name);
+            if (newName === null) return;
+
+            const addHoursStr = prompt("Tambah/Kurangi Waktu (dalam Jam).\nContoh: '2' untuk tambah 2 jam, '-1' untuk kurangi 1 jam, atau '0' jika tidak diubah:", "0");
+            if (addHoursStr === null) return;
+
+            const addMinsStr = prompt("Tambah/Kurangi Waktu (dalam Menit).\nContoh: '30' untuk tambah 30 menit, '-15' untuk kurangi 15 menit, atau '0' jika tidak diubah:", "0");
+            if (addMinsStr === null) return;
+
+            const addHours = parseInt(addHoursStr) || 0;
+            const addMins = parseInt(addMinsStr) || 0;
+
+            if (newName.trim() !== "") {
+                item.name = newName.trim();
+            }
+
+            item.targetTime = item.targetTime + (addHours * 3600000) + (addMins * 60000);
+            
+            if (item.targetTime > new Date().getTime()) {
+                item.notified = false;
+            }
+
+            render();
+            syncToCloud();
+        }
+
         function moveTab(id, newTab) {
             const item = localTimers.find(t => t.id === id);
             if (item) {
@@ -203,9 +255,11 @@
         }
 
         function deleteTimer(id) {
-            localTimers = localTimers.filter(t => t.id !== id);
-            render();
-            syncToCloud();
+            if (confirm("Yakin ingin menghapus timer ini?")) {
+                localTimers = localTimers.filter(t => t.id !== id);
+                render();
+                syncToCloud();
+            }
         }
 
         function switchTab(tab) {
@@ -231,7 +285,7 @@
             const dayName = daysArr[d.getDay()];
             const dateStr = d.toLocaleDateString('id-ID');
             const timeStr = d.toTimeString().split(' ')[0];
-            return `Hari ${dayName}, Tanggal ${dateStr}, Pukul ${timeStr}`;
+            return `Hari ${dayName}, Tgl ${dateStr}, Pukul ${timeStr}`;
         }
 
         function render() {
@@ -248,7 +302,7 @@
             targetList.sort((a, b) => a.targetTime - b.targetTime);
 
             if (targetList.length === 0) {
-                container.innerHTML = '<p style="color:#888; text-align:center; grid-column: 1/-1;">Tidak ada timer di tab ini.</p>';
+                container.innerHTML = '<p style="color:#888; text-align:center; grid-column: 1/-1; font-size:12px;">Tidak ada timer di tab ini.</p>';
                 return;
             }
 
@@ -258,7 +312,6 @@
                 const diff = item.targetTime - now;
                 const isReady = diff <= 0;
 
-                // Kirim notifikasi jika timer selesai dan belum pernah diberitahukan
                 if (isReady && !item.notified) {
                     item.notified = true;
                     triggerBrowserNotification(item.name);
@@ -276,16 +329,19 @@
 
                 const card = document.createElement('div');
                 card.className = 'card';
-                card.innerHTML = `==============================
-Nama World      : ${item.name}
-Timer           : ${isReady ? 'Selesai!' : timerStr}
-Estimasi selesai: ${formatDate(item.targetTime)}
-Status          : <span class="${isReady ? 'status-ready' : 'status-not-ready'}">${isReady ? 'Ready' : 'Not Ready'}</span>
-==============================
-<button class="action-btn" onclick="moveTab(${item.id}, '${currentTab === 'ongoing' ? 'complete' : 'ongoing'}')">
-    ${currentTab === 'ongoing' ? 'Pindahkan ke Complete' : 'Kembalikan ke Ongoing'}
-</button>
-<button class="action-btn del" onclick="deleteTimer(${item.id})">Hapus</button>`;
+                card.innerHTML = `<span class="card-divider">==================================</span>
+Nama World : ${item.name}
+Timer      : ${isReady ? 'Selesai!' : timerStr}
+Estimasi   : ${formatDate(item.targetTime)}
+Status     : <span class="${isReady ? 'status-ready' : 'status-not-ready'}">${isReady ? 'Ready' : 'Not Ready'}</span>
+<span class="card-divider">==================================</span>
+<div class="card-actions">
+    <button class="action-btn" onclick="moveTab(${item.id}, '${currentTab === 'ongoing' ? 'complete' : 'ongoing'}')">
+        ${currentTab === 'ongoing' ? 'Pindahkan ke Complete' : 'Kembalikan ke Ongoing'}
+    </button>
+    <button class="action-btn edit" onclick="editTimer(${item.id})">Edit</button>
+    <button class="action-btn del" onclick="deleteTimer(${item.id})">Hapus</button>
+</div>`;
 
                 container.appendChild(card);
             });
