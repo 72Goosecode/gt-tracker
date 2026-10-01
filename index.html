@@ -5,11 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Growtopia Farming Tracker</title>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Courier New', Courier, monospace;
             background-color: #121212;
@@ -19,95 +15,48 @@
             margin: auto;
         }
         h2 { text-align: center; color: #fff; margin-bottom: 15px; }
-        
-        /* Tab Navigation */
-        .tab-buttons, .view-buttons {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
+        .tab-buttons, .view-buttons { display: flex; gap: 10px; margin-bottom: 15px; }
         .tab-btn, .view-btn {
-            flex: 1;
-            padding: 10px;
-            background: #222;
-            color: #fff;
-            border: 1px solid #444;
-            cursor: pointer;
-            font-weight: bold;
-            font-family: inherit;
+            flex: 1; padding: 10px; background: #222; color: #fff;
+            border: 1px solid #444; cursor: pointer; font-weight: bold; font-family: inherit;
         }
-        .tab-btn.active, .view-btn.active {
-            background: #00ff66;
-            color: #000;
-        }
-
-        /* Container Tampilan Grid (Paint Layout) */
-        .container-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr); /* 2 Kolom: 1 2, 3 4 */
-            gap: 15px;
-        }
-
-        @media (max-width: 600px) {
-            .container-grid {
-                grid-template-columns: 1fr; /* 1 kolom jika di layar HP kecil */
-            }
-        }
-
-        /* Container Tampilan List Text */
-        .container-list {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        /* Card Style */
+        .tab-btn.active, .view-btn.active { background: #00ff66; color: #000; }
+        .container-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+        @media (max-width: 600px) { .container-grid { grid-template-columns: 1fr; } }
+        .container-list { display: flex; flex-direction: column; gap: 15px; }
         .card {
-            background: #1a1a1a;
-            border: 1px solid #333;
-            padding: 12px;
-            white-space: pre-wrap;
-            line-height: 1.4;
-            border-radius: 4px;
+            background: #1a1a1a; border: 1px solid #333; padding: 12px;
+            white-space: pre-wrap; line-height: 1.4; border-radius: 4px;
         }
-
         .status-ready { color: #00ff66; font-weight: bold; }
         .status-not-ready { color: #ff3333; font-weight: bold; }
-
-        /* Form Input */
-        .add-form {
-            background: #222;
-            padding: 15px;
-            border: 1px solid #444;
-            margin-bottom: 20px;
-            border-radius: 4px;
+        .add-form, .config-form {
+            background: #222; padding: 15px; border: 1px solid #444;
+            margin-bottom: 20px; border-radius: 4px;
         }
-        .add-form input {
-            background: #111;
-            border: 1px solid #555;
-            color: #fff;
-            padding: 8px;
-            margin: 4px 0;
-            width: 100%;
-            font-family: inherit;
+        .add-form input, .config-form input {
+            background: #111; border: 1px solid #555; color: #fff;
+            padding: 8px; margin: 4px 0; width: 100%; font-family: inherit;
         }
-        .add-form button, .action-btn {
-            background: #00ff66;
-            color: #000;
-            border: none;
-            padding: 8px 12px;
-            cursor: pointer;
-            font-weight: bold;
-            font-family: inherit;
-            margin-top: 8px;
-            border-radius: 2px;
+        .add-form button, .action-btn, .config-form button {
+            background: #00ff66; color: #000; border: none; padding: 8px 12px;
+            cursor: pointer; font-weight: bold; font-family: inherit; margin-top: 8px; border-radius: 2px;
         }
         .action-btn.del { background: #ff3333; color: #fff; margin-left: 5px; }
+        .sync-status { text-align: center; font-size: 12px; color: #aaa; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
     <h2>GROWTOPIA FARMING TRACKER</h2>
+
+    <!-- Form Pengaturan Google Script URL -->
+    <div class="config-form">
+        <strong style="color:#fff;">⚙️ KONEKSI GOOGLE DRIVE (SHEETS)</strong><br>
+        <input type="text" id="scriptUrlInput" placeholder="Masukkan URL Google Apps Script kamu di sini">
+        <button onclick="saveScriptUrl()">Simpan URL Script</button>
+        <div id="syncStatus" class="sync-status" style="margin-top: 8px;">Status: Belum Terhubung</div>
+    </div>
 
     <!-- Form Tambah Timer -->
     <div class="add-form">
@@ -121,10 +70,10 @@
         <button onclick="addTimer()">Mulai Timer</button>
     </div>
 
-    <!-- Tombol Pilihan Mode Tampilan -->
+    <!-- Tombol Mode Tampilan -->
     <div class="view-buttons">
         <button class="view-btn active" id="btnViewList" onclick="switchView('list')">Tampilan List</button>
-        <button class="view-btn" id="btnViewGrid" onclick="switchView('grid')">Tampilan Grid (Paint)</button>
+        <button class="view-btn" id="btnViewGrid" onclick="switchView('grid')">Tampilan Grid</button>
     </div>
 
     <!-- Tombol Navigasi Tab -->
@@ -133,19 +82,66 @@
         <button class="tab-btn" id="btnComplete" onclick="switchTab('complete')">COMPLETE (<span id="countComplete">0</span>)</button>
     </div>
 
-    <!-- List Container -->
     <div id="timerContainer" class="container-list"></div>
 
     <script>
         let currentTab = 'ongoing';
         let currentView = 'list';
+        let localTimers = [];
 
-        function getData() {
-            return JSON.parse(localStorage.getItem('gt_simple_timers')) || [];
+        function getScriptUrl() {
+            return localStorage.getItem('gt_script_url') || '';
         }
 
-        function saveData(data) {
-            localStorage.setItem('gt_simple_timers', JSON.stringify(data));
+        function saveScriptUrl() {
+            const url = document.getElementById('scriptUrlInput').value.trim();
+            localStorage.setItem('gt_script_url', url);
+            alert("URL Script berhasil disimpan!");
+            loadFromCloud();
+        }
+
+        async function loadFromCloud() {
+            const scriptUrl = getScriptUrl();
+            if (!scriptUrl) {
+                document.getElementById('syncStatus').innerText = "⚠️ Masukkan URL Apps Script untuk sinkronisasi cloud!";
+                localTimers = JSON.parse(localStorage.getItem('gt_local_fallback')) || [];
+                render();
+                return;
+            }
+
+            try {
+                document.getElementById('syncStatus').innerText = "🔄 Memuat dari Google Drive...";
+                const res = await fetch(scriptUrl);
+                const data = await res.json();
+                localTimers = data;
+                document.getElementById('syncStatus').innerText = "✅ Tersambung & tersinkronisasi dengan Google Drive";
+                render();
+            } catch (err) {
+                console.error(err);
+                document.getElementById('syncStatus').innerText = "❌ Gagal memuat data cloud. Menampilkan data lokal.";
+                localTimers = JSON.parse(localStorage.getItem('gt_local_fallback')) || [];
+                render();
+            }
+        }
+
+        async function syncToCloud() {
+            localStorage.setItem('gt_local_fallback', JSON.stringify(localTimers));
+            const scriptUrl = getScriptUrl();
+            if (!scriptUrl) return;
+
+            document.getElementById('syncStatus').innerText = "🔄 Menyimpan ke Google Drive...";
+            try {
+                await fetch(scriptUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(localTimers)
+                });
+                document.getElementById('syncStatus').innerText = "✅ Tersimpan di Google Drive";
+            } catch (err) {
+                console.error(err);
+                document.getElementById('syncStatus').innerText = "❌ Gagal menyimpan ke cloud";
+            }
         }
 
         function addTimer() {
@@ -154,50 +150,41 @@
             const hours = parseInt(document.getElementById('hours').value) || 0;
             const mins = parseInt(document.getElementById('minutes').value) || 0;
 
-            if (!name) {
-                alert("Isi nama world dulu!");
-                return;
-            }
-
-            if (days === 0 && hours === 0 && mins === 0) {
-                alert("Masukkan durasi waktu!");
-                return;
-            }
+            if (!name) { alert("Isi nama world dulu!"); return; }
+            if (days === 0 && hours === 0 && mins === 0) { alert("Masukkan durasi waktu!"); return; }
 
             const now = new Date();
             const target = new Date(now.getTime() + (days * 86400000) + (hours * 3600000) + (mins * 60000));
 
-            const list = getData();
-            list.push({
+            localTimers.push({
                 id: Date.now(),
                 name: name,
                 targetTime: target.getTime(),
                 statusTab: 'ongoing'
             });
 
-            saveData(list);
             document.getElementById('worldName').value = '';
             document.getElementById('days').value = '';
             document.getElementById('hours').value = '';
             document.getElementById('minutes').value = '';
+
             render();
+            syncToCloud();
         }
 
         function moveTab(id, newTab) {
-            const list = getData();
-            const item = list.find(t => t.id === id);
+            const item = localTimers.find(t => t.id === id);
             if (item) {
                 item.statusTab = newTab;
-                saveData(list);
                 render();
+                syncToCloud();
             }
         }
 
         function deleteTimer(id) {
-            let list = getData();
-            list = list.filter(t => t.id !== id);
-            saveData(list);
+            localTimers = localTimers.filter(t => t.id !== id);
             render();
+            syncToCloud();
         }
 
         function switchTab(tab) {
@@ -227,19 +214,16 @@
         }
 
         function render() {
-            const list = getData();
             const container = document.getElementById('timerContainer');
             container.innerHTML = '';
 
-            const ongoingList = list.filter(t => t.statusTab === 'ongoing');
-            const completeList = list.filter(t => t.statusTab === 'complete');
+            const ongoingList = localTimers.filter(t => t.statusTab === 'ongoing');
+            const completeList = localTimers.filter(t => t.statusTab === 'complete');
 
             document.getElementById('countOngoing').innerText = ongoingList.length;
             document.getElementById('countComplete').innerText = completeList.length;
 
             let targetList = currentTab === 'ongoing' ? ongoingList : completeList;
-
-            // UUTKAN TIMER: Yang selesai tercepat (atau sudah Ready) di posisi paling atas
             targetList.sort((a, b) => a.targetTime - b.targetTime);
 
             if (targetList.length === 0) {
@@ -279,8 +263,14 @@ Status          : <span class="${isReady ? 'status-ready' : 'status-not-ready'}"
             });
         }
 
+        // Tampilkan URL tersimpan jika ada saat halaman dibuka
+        const savedUrl = getScriptUrl();
+        if (savedUrl) {
+            document.getElementById('scriptUrlInput').value = savedUrl;
+        }
+
+        loadFromCloud();
         setInterval(render, 1000);
-        render();
     </script>
 </body>
 </html>
